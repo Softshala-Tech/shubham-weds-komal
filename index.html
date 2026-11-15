@@ -14,7 +14,6 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🪔</text></svg>">
-
 <title>Shubham weds Komal · 11 December 2026</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -297,6 +296,20 @@ footer{background:#5c0f17;color:#f6dfa6;text-align:center;padding:56px 26px calc
   .hero{height:100svh}
   .palace-wrap{transform:translate(-50%,8%)}
 }
+
+/* ---------------- music ---------------- */
+.music{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:12px;z-index:40;width:46px;height:46px;border-radius:50%;
+  display:none;align-items:center;justify-content:center;cursor:pointer;color:#f6dfa6;
+  background:rgba(13,27,61,.6);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border:1px solid rgba(227,179,90,.7);box-shadow:0 4px 14px rgba(0,0,0,.3)}
+body:not(.locked) .music{display:flex}
+.eq{display:flex;align-items:flex-end;gap:3px;height:18px}
+.eq i{width:3px;height:100%;background:currentColor;border-radius:2px;transform-origin:bottom;transform:scaleY(.3)}
+.music.playing .eq i{animation:eq 1s ease-in-out infinite}
+.music.playing .eq i:nth-child(2){animation-delay:-.4s}.music.playing .eq i:nth-child(3){animation-delay:-.7s}.music.playing .eq i:nth-child(4){animation-delay:-.2s}
+@keyframes eq{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
+.mute-ico{display:none;width:22px;height:22px}
+.music:not(.playing) .eq{display:none}
+.music:not(.playing) .mute-ico{display:block}
 </style>
 </head>
 <body class="locked">
@@ -579,18 +592,40 @@ footer{background:#5c0f17;color:#f6dfa6;text-align:center;padding:56px 26px calc
 </main>
 
 <a class="fab" id="fab" href="#rsvp">RSVP</a>
+<audio id="bgm" loop preload="auto" src="music.mp3"></audio>
+<button type="button" class="music" id="music" aria-label="Play music" aria-pressed="false">
+  <span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+  <svg class="mute-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path d="M16 9l5 6M21 9l-5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+</button>
 <script>(function(){
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var body = document.body, gate = document.getElementById('gate');
 
   // Opening doors
-  function openGate(){
+  var bgm = document.getElementById('bgm'), mbtn = document.getElementById('music'), wantMusic = false, fadeT;
+  function setBtn(on){ mbtn.classList.toggle('playing', on); mbtn.setAttribute('aria-pressed', on ? 'true' : 'false'); mbtn.setAttribute('aria-label', on ? 'Mute music' : 'Play music'); }
+  function playMusic(){
+    wantMusic = true; clearInterval(fadeT);
+    bgm.volume = 0;
+    var p = bgm.play();
+    if (p && p.then){ p.then(function(){ setBtn(true); }).catch(function(){ wantMusic = false; setBtn(false); }); } else { setBtn(true); }
+    fadeT = setInterval(function(){ bgm.volume = Math.min(0.55, bgm.volume + 0.03); if (bgm.volume >= 0.55) clearInterval(fadeT); }, 100);
+  }
+  function stopMusic(){ wantMusic = false; clearInterval(fadeT); bgm.pause(); setBtn(false); }
+  mbtn.addEventListener('click', function(){ if (bgm.paused) playMusic(); else stopMusic(); });
+  document.addEventListener('visibilitychange', function(){
+    if (document.hidden){ if (!bgm.paused) bgm.pause(); }
+    else if (wantMusic){ bgm.play().catch(function(){}); }
+  });
+
+  function openGate(withMusic){
+    if (withMusic) playMusic();
     gate.classList.add('open');
     body.classList.remove('locked');
     setTimeout(function(){ gate.classList.add('gone'); }, reduce ? 0 : 1700);
   }
-  document.getElementById('open').addEventListener('click', openGate);
-  if (location.hash && location.hash !== '#top') { openGate(); }
+  document.getElementById('open').addEventListener('click', function(){ openGate(true); });
+  if (location.hash && location.hash !== '#top') { openGate(false); }
 
   // Reveal on scroll, staggered within each section
   var io = new IntersectionObserver(function(entries){
